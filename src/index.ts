@@ -29,6 +29,12 @@ express.json(),
         const body = req.body;
         console.log('Received request:', body);
         console.log('Headers:', req.headers);
+
+        res.status(200).json({
+            message: 'Request received successfully',
+            data: body,
+            headers: req.headers
+        })
     } catch (error) {
         console.error('Error processing request:', error);
         res.status(500).send('Internal Server Error');
