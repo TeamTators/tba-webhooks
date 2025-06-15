@@ -25,7 +25,10 @@ app.post('/',
 express.json(),
 (req, res) => {
     try {
-        serverChannel.send('ping', 'pong');
+        // serverChannel.send('ping', 'pong');
+        const body = req.body;
+        console.log('Received request:', body);
+        console.log('Headers:', req.headers);
     } catch (error) {
         console.error('Error processing request:', error);
         res.status(500).send('Internal Server Error');
