@@ -1,0 +1,21 @@
+{
+  "name": "tba-webhooks",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.12.1",
+  "dependencies": {
+    "@types/express": "^5.0.3",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "redis": "^5.5.6",
+    "ts-utils": "git+https://github.com/tsaxking/global-ts-utilities.git",
+    "zod": "^3.25.64"
+  }
+}
