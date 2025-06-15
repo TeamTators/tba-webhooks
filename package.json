@@ -7,18 +7,23 @@
     "build": "tsc && node ./scripts/post-build.js",
     "install": "pnpm build",
     "test": "vitest",
-    "start": "node lib/esm/index.js"
+    "start": "pnpm build && node lib/esm/index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.12.1",
   "dependencies": {
+    "@types/body-parser": "^1.19.6",
     "@types/express": "^5.0.3",
+    "body-parser": "^2.2.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "redis": "^5.5.6",
     "ts-utils": "git+https://github.com/tsaxking/global-ts-utilities.git",
     "zod": "^3.25.64"
+  },
+  "devDependencies": {
+    "@total-typescript/ts-reset": "^0.6.1"
   }
 }
