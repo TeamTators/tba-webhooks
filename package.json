@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc && node ./scripts/post-build.js",
     "install": "pnpm build",
-    "test": "vitest"
+    "test": "vitest",
+    "start": "node lib/esm/index.js"
   },
   "keywords": [],
   "author": "",
