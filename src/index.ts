@@ -10,10 +10,10 @@ import crypto from 'crypto';
 import bodyParser from 'body-parser';
 
 const generateWebhookHmac = (payload: string) => {
-  return crypto
-    .createHmac('sha256', String(process.env.TBA_SECRET))
-    .update(payload, 'utf8')
-    .digest('hex');
+    return crypto
+        .createHmac('sha256', String(process.env.TBA_SECRET))
+        .update(payload, 'utf8')
+        .digest('hex');
 }
 
 config();
@@ -22,7 +22,6 @@ const app = express();
 const server = createServer(app);
 const PORT = Number(process.env.PORT) || 3000;
 
-console.log(process.env.TBA_SECRET)
 
 
 Redis.connect().then(res => {
@@ -32,13 +31,6 @@ Redis.connect().then(res => {
         console.error('Failed to connect to Redis:', res.error);
     }
 });
-
-const serverChannel = Redis.createChannel('server', {
-    ping: z.string(),
-}, {
-    ping: z.string(),
-});
-
 const logEvent = async (event: string, data: unknown) => {
     if (!await fs.access('../logs').then(() => true).catch(() => false)) {
         console.log('Logs directory does not exist, creating it...');
@@ -91,7 +83,7 @@ const parseTBAEvent = (data: unknown) => {
 
 app.post('/', 
     bodyParser.text({ type: 'application/json' }),
-(req, res) => {
+async (req, res) => {
     try {
         if (req.headers['x-tba-hmac'] !== generateWebhookHmac(req.body)) {
             console.error('Invalid TBA secret');
@@ -104,6 +96,8 @@ app.post('/',
             res.status(200).send('Thank you for feeding us! Nom nom nom');
             return;
         }
+
+        await Redis.emit(tbaEvent.type, tbaEvent.data).unwrap();
 
         res.status(200).send('Thank you for feeding us! Nom nom nom');
     } catch (error) {

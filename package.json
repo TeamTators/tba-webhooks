@@ -21,6 +21,7 @@
     "express": "^5.1.0",
     "redis": "^5.5.6",
     "ts-utils": "git+https://github.com/tsaxking/global-ts-utilities.git",
+    "uuid": "^11.1.0",
     "zod": "^3.25.64"
   },
   "devDependencies": {
