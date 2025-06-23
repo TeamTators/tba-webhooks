@@ -1,7 +1,6 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Redis } from './redis';
-import { config } from 'dotenv';
 import { z } from 'zod';
 import fs from 'fs/promises';
 import '@total-typescript/ts-reset';
@@ -16,7 +15,6 @@ const generateWebhookHmac = (payload: string) => {
         .digest('hex');
 }
 
-config();
 
 const app = express();
 const server = createServer(app);
