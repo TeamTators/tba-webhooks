@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 
-export const message_schemas: {
+export const messageSchemas: {
     [key: string]: z.ZodTypeAny;
 } = {
     'upcoming_match': z.object({
@@ -65,7 +65,7 @@ export const message_schemas: {
             first_event_code: z.string(),
             first_event_id: z.string(),
             gmaps_place_id: z.string(),
-            gmaps_url: z.string().url(),
+            gmaps_url: z.string(),
             key: z.string(),
             lat: z.number(),
             lng: z.number(),
@@ -84,30 +84,30 @@ export const message_schemas: {
                 file: z.string(),
                 type: z.string(), // or z.enum(['livestream']) if values are known/fixed
             })),
-            website: z.string().url(),
+            website: z.string(),
             week: z.number(),
             year: z.number(),
         }),
     }),
-    'awards_posted': z.object({
-        event_key: z.string(),
-        team_key: z.string(),
-        event_name: z.string(),
-        awards: z.array(z.object({
-            name: z.string(),
-            award_type: z.number(),
-            year: z.number(),
-            event_key: z.string(),
-            recipient_list: z.array(z.object({
-                awardee: z.unknown().nullable(),
-                team_key: z.string(),
-            })),
-        })),
-    }),
+    // 'awards_posted': z.object({
+    //     event_key: z.string(),
+    //     team_key: z.string(),
+    //     event_name: z.string(),
+    //     awards: z.array(z.object({
+    //         name: z.string(),
+    //         award_type: z.number(),
+    //         year: z.number(),
+    //         event_key: z.string(),
+    //         recipient_list: z.array(z.object({
+    //             awardee: z.unknown().nullable(),
+    //             team_key: z.string(),
+    //         })),
+    //     })),
+    // }),
     'schedule_updated': z.object({
         event_key: z.string(),
         event_name: z.string(),
-        firsts_match_time: z.number(),
+        first_match_time: z.number().optional(),
     }),
     'ping': z.object({
         title: z.string(),
@@ -116,7 +116,7 @@ export const message_schemas: {
     'broadcast': z.object({
         title: z.string(),
         desc: z.string(),
-        url: z.string().url(),
+        url: z.string(),
     }),
     'verification': z.object({
         verification_key: z.string(),

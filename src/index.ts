@@ -4,110 +4,153 @@ import { Redis } from './redis';
 import { z } from 'zod';
 import fs from 'fs/promises';
 import '@total-typescript/ts-reset';
-import { message_schemas } from './schemas';
+import { messageSchemas } from './schemas';
 import crypto from 'crypto';
 import bodyParser from 'body-parser';
+import { config } from 'dotenv';
 
-const generateWebhookHmac = (payload: string) => {
+export const generateWebhookHmac = (payload: string, secret: string) => {
     return crypto
-        .createHmac('sha256', String(process.env.TBA_SECRET))
+        .createHmac('sha256', secret)
         .update(payload, 'utf8')
         .digest('hex');
 }
 
+export const main = async (
+    PORT: number = 3000, 
+    secret: string = String(process.env.TBA_SECRET),
+    redisName: string = String(process.env.REDIS_NAME),
+) => {
+    const app = express();
+    const server = createServer(app);
 
-const app = express();
-const server = createServer(app);
-const PORT = Number(process.env.PORT) || 3000;
+    await Redis.connect(redisName).unwrap();
+    const logEvent = async (event: string, data: unknown) => {
+        if (!await fs.access('../logs').then(() => true).catch(() => false)) {
+            console.log('Logs directory does not exist, creating it...');
+            await fs.mkdir('../logs', { recursive: true });
+            await fs.writeFile('../logs/events.log', '', 'utf8');
+        }
 
-
-
-Redis.connect().then(res => {
-    if (res.isOk()) {
-        console.log('Redis connected successfully');
-    } else {
-        console.error('Failed to connect to Redis:', res.error);
-    }
-});
-const logEvent = async (event: string, data: unknown) => {
-    if (!await fs.access('../logs').then(() => true).catch(() => false)) {
-        console.log('Logs directory does not exist, creating it...');
-        await fs.mkdir('../logs', { recursive: true });
-        await fs.writeFile('../logs/events.log', '', 'utf8');
-    }
-
-    await fs.appendFile(
-        '../logs/events.log',
-        `${new Date().toISOString()} - ${event}: ${JSON.stringify(data)}\n`,
-    );
-}
-
-const parseTBAEvent = (data: unknown) => {
-    const parsed = z.object({
-        message_data: z.unknown(),
-        message_type: z.string(),
-    }).safeParse(data);
-
-    if (!parsed.success) {
-        console.error('Failed to parse TBA event:', parsed.error);
-        return null;
+        await fs.appendFile(
+            '../logs/events.log',
+            `${new Date().toISOString()} - ${event}: ${JSON.stringify(data)}\n`,
+        );
     }
 
-    const { message_data, message_type } = parsed.data;
-    if (message_type === 'awards_posted') {
-        return null;
-    }
-    const schema = message_schemas[message_type];
-    if (!schema) {
-        console.error(`No schema found for message type: ${message_type}`);
-        return null;
-    }
+    const parseTBAEvent = (data: unknown) => {
+        const parsed = z.object({
+            message_data: z.unknown(),
+            message_type: z.string(),
+        }).safeParse(data);
 
-    const validation = schema.safeParse(message_data);
-    if (!validation.success) {
-        console.error(`Failed to validate message data for type ${message_type}:`, validation.error);
-        return null;
-    }
+        if (!parsed.success) {
+            console.error('Failed to parse TBA event:', parsed.error);
+            return null;
+        }
 
-    logEvent(message_type, validation.data).catch(err => {
-        console.error('Failed to log event:', err);
+        const { message_data, message_type } = parsed.data;
+        if (message_type === 'awards_posted') {
+            return null;
+        }
+        const schema = messageSchemas[message_type];
+        if (!schema) {
+            console.error(`No schema found for message type: ${message_type}`);
+            return null;
+        }
+
+        const validation = schema.safeParse(message_data);
+        if (!validation.success) {
+            console.error(`Failed to validate message data for type ${message_type}:`, validation.error);
+            return null;
+        }
+
+        logEvent(message_type, validation.data).catch(err => {
+            console.error('Failed to log event:', err);
+        });
+
+        return {
+            type: message_type,
+            data: validation.data,
+        };
+    };
+
+    app.post('/', 
+        bodyParser.text({ type: 'application/json' }),
+    async (req, res) => {
+        try {
+            if (req.headers['x-tba-hmac'] !== generateWebhookHmac(req.body, secret)) {
+                console.error('Invalid TBA secret');
+                res.status(403).send('Forbidden: Invalid TBA secret');
+                return;
+            }
+
+            const tbaEvent = parseTBAEvent(JSON.parse(req.body));
+            if (!tbaEvent) {
+                console.error('Failed to parse TBA event');
+                res.status(200).send('Thank you for feeding us! Nom nom nom');
+                return;
+            }
+
+            await Redis.emit(tbaEvent.type, tbaEvent.data).unwrap();
+
+            res.status(200).send('Thank you for feeding us! Nom nom nom');
+        } catch (error) {
+            console.error('Error processing request:', error);
+            res.status(200).send('Internal Server Error, please try again later');
+        }
     });
 
-    return {
-        type: message_type,
-        data: validation.data,
-    };
-};
+    app.get('/', (req, res) => {
+        res.status(200).send('Hello TBA! You guys are awesome!');
+    });
 
-app.post('/', 
-    bodyParser.text({ type: 'application/json' }),
-async (req, res) => {
-    try {
-        if (req.headers['x-tba-hmac'] !== generateWebhookHmac(req.body)) {
-            console.error('Invalid TBA secret');
-            res.status(403).send('Forbidden: Invalid TBA secret');
-            return;
+    return new Promise<void>((res, rej) => {
+        server.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
+        server.on('error', (err) => {
+            console.error('Server error:', err);
+            rej(err);
+        });
+        server.on('close', () => {
+            console.log('Server closed');
+            res();
+        });
+
+        const onexit = () => {
+            server.close(() => {
+                console.log('Server closed');
+                res();
+            });
         }
 
-        const tbaEvent = parseTBAEvent(JSON.parse(req.body));
-        if (!tbaEvent) {
-            res.status(200).send('Thank you for feeding us! Nom nom nom');
-            return;
-        }
+        process.on('SIGINT', onexit);
+        process.on('SIGTERM', onexit);
+        process.on('exit', onexit);
+        process.on('uncaughtException', (err) => {
+            console.error('Uncaught exception:', err);
+            server.close(() => {
+                console.log('Server closed');
+                rej(err);
+            });
+        });
+        process.on('unhandledRejection', (reason, promise) => {
+            console.error('Unhandled rejection at:', promise, 'reason:', reason);
+            server.close(() => {
+                console.log('Server closed');
+                rej(reason);
+            });
+        });
+    });
+}
 
-        await Redis.emit(tbaEvent.type, tbaEvent.data).unwrap();
 
-        res.status(200).send('Thank you for feeding us! Nom nom nom');
-    } catch (error) {
-        console.error('Error processing request:', error);
-        res.status(200).send('Internal Server Error, please try again later');
-    }
-});
 
-app.get('/', (req, res) => {
-    res.status(200).send('Hello TBA! You guys are awesome!');
-});
-
-server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+if (require.main === module) {
+    config();
+    main().catch(error => {
+        console.error('Error starting server:', error);
+        process.exit(1);
+    });
+}
