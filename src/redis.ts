@@ -141,9 +141,7 @@ export namespace Redis {
 	};
 
 	type RedisMessage<
-		T extends {
-			[key: string]: z.ZodType;
-		}
+		T extends Record<string, z.ZodType>
 	> = {
 		event: keyof T;
 		data: z.infer<T[keyof T]>;
@@ -152,9 +150,7 @@ export namespace Redis {
 	};
 
 	export class ListeningService<
-		Events extends {
-			[key: string]: z.ZodType;
-		},
+		Events extends Record<string, z.ZodType>,
 		Name extends string
 	> {
 		public static services = new Map<string, ListeningService<any, any>>();
