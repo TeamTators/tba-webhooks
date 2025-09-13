@@ -6,7 +6,6 @@ import '@total-typescript/ts-reset';
 import { messageSchemas } from './schemas';
 import crypto from 'crypto';
 import bodyParser from 'body-parser';
-import { config } from 'dotenv';
 import { Redis } from 'redis-utils';
 
 export const generateWebhookHmac = (payload: string, secret: string) => {
@@ -30,6 +29,8 @@ export const main = async (
         name: redisName,
         url: process.env.REDIS_URL,
     });
+
+    await redis.init().unwrap();
 
     const logEvent = async (event: string, data: unknown) => {
         if (!await fs.access('../logs').then(() => true).catch(() => false)) {
@@ -92,6 +93,8 @@ export const main = async (
             }
 
             const tbaEvent = parseTBAEvent(JSON.parse(req.body));
+
+            console.log('Received TBA event:', tbaEvent?.type);
             if (!tbaEvent) {
                 console.error('Failed to parse TBA event');
                 res.status(200).send('Thank you for feeding us! Nom nom nom');
@@ -148,15 +151,5 @@ export const main = async (
                 rej(reason);
             });
         });
-    });
-}
-
-
-
-if (require.main === module) {
-    config();
-    main().catch(error => {
-        console.error('Error starting server:', error);
-        process.exit(1);
     });
 }
