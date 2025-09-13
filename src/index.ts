@@ -1,6 +1,5 @@
 import express from 'express';
 import { createServer } from 'http';
-import { Redis } from './redis';
 import { z } from 'zod';
 import fs from 'fs/promises';
 import '@total-typescript/ts-reset';
@@ -8,6 +7,7 @@ import { messageSchemas } from './schemas';
 import crypto from 'crypto';
 import bodyParser from 'body-parser';
 import { config } from 'dotenv';
+import { Redis } from 'redis-utils';
 
 export const generateWebhookHmac = (payload: string, secret: string) => {
     return crypto
@@ -24,7 +24,13 @@ export const main = async (
     const app = express();
     const server = createServer(app);
 
-    await Redis.connect(redisName).unwrap();
+    // await Redis.connect(redisName).unwrap();
+
+    const redis = new Redis({
+        name: redisName,
+        url: process.env.REDIS_URL,
+    });
+
     const logEvent = async (event: string, data: unknown) => {
         if (!await fs.access('../logs').then(() => true).catch(() => false)) {
             console.log('Logs directory does not exist, creating it...');
@@ -92,7 +98,7 @@ export const main = async (
                 return;
             }
 
-            await Redis.emit(tbaEvent.type, tbaEvent.data).unwrap();
+            await redis.emit(tbaEvent.type, tbaEvent.data).unwrap();
 
             res.status(200).send('Thank you for feeding us! Nom nom nom');
         } catch (error) {
